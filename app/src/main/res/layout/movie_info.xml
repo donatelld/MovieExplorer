@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/movieLayout"
+    android:layout_width="210px"
+    android:layout_height="330px"
+    android:layout_marginLeft="15px"
+    android:layout_marginBottom="20px"
+    android:focusable="true"
+    android:background="@drawable/default_border"
+    android:orientation="vertical">
+
+    <ImageView
+        android:id="@+id/movieImageView"
+        android:layout_width="200px"
+        android:layout_height="280px"
+        android:layout_marginTop="5px"
+        android:layout_marginLeft="5px"
+        android:background="@drawable/movie_default"/>
+    <TextView
+        android:id="@+id/movieNameView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:layout_marginTop="6px"
+        android:textColor="#fff"
+        android:textAlignment="center"
+        android:textSize="16px"
+        android:text="复仇者联盟4"
+        />
+
+</LinearLayout>
