@@ -16,12 +16,15 @@ package com.alvin.movie.explorer;
 
 import android.app.Activity;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.support.v7.app.AlertDialog;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.widget.ImageView;
 
@@ -69,6 +72,8 @@ public class MainActivity extends Activity {
     private int currentRow = 1;
     private static final String REMOTE_IP = "192.168.0.110";
     private static final String REOMTE_PORT = "80";
+    private static final String TAG = "MainActivity";
+
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -91,6 +96,20 @@ public class MainActivity extends Activity {
                     public void call(List<Movie> movies) {
                         if (movies == null){
                             movieList = new ArrayList<>();
+                            try {
+                                new AlertDialog.Builder(context, R.style.Theme_AppCompat_Light_Dialog_Alert)
+                                    .setTitle("错误")
+                                    .setMessage("未连接到电脑，请检查电脑是否开机")
+                                    .setPositiveButton("退出", new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialogInterface, int i) {
+                                            System.exit(0);
+                                        }
+                                    }).create().show();
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                            return;
                         }else{
                             movieList = movies;
                         }
@@ -98,9 +117,11 @@ public class MainActivity extends Activity {
                         for (Movie movie : movieList) {
                             try {
                                 MovieInfoView view = new MovieInfoView(context);
-                                view.getMovieNameView().setText(movie.getTitle());
+                                view.getMovieNameView().setText(movie.getResolution() + " " + movie.getTitle());
                                 ImageView movieImageView = view.getMovieImageView();
-                                movieImageView.setBackground(movie.getPhotoDrawable());
+                                if(movie.getPhotoDrawable() != null) {
+                                    movieImageView.setBackground(movie.getPhotoDrawable());
+                                }
                                 mainLayout.addView(view);
                                 if(first){
                                     view.getMovieLayout().setBackgroundResource(R.drawable.selected_border);
@@ -116,24 +137,31 @@ public class MainActivity extends Activity {
     }
 
     private List<Movie> loadRemoteMovies() {
+        StringBuilder builder = new StringBuilder();
+        long start = System.currentTimeMillis();
         try {
-            long start = System.currentTimeMillis();
             URL url = new URL("http://" + REMOTE_IP + ":" + REOMTE_PORT + "/getMovies.html");
             HttpURLConnection connection = (HttpURLConnection)url.openConnection();
             connection.setRequestMethod("GET");
             connection.setDoOutput(true);
+            connection.setConnectTimeout(2000);
+            connection.setReadTimeout(3000);
             OutputStream os = connection.getOutputStream();
             connection.connect();
             os.flush();
             os.close();
 
             BufferedReader reader = new BufferedReader(new InputStreamReader(connection.getInputStream(),"UTF-8"));
-            StringBuilder builder = new StringBuilder();
             String line = null;
             while ((line = reader.readLine()) != null){
                 builder.append(line);
             }
             reader.close();
+        } catch (IOException e) {
+            Log.e(TAG, "获取电影列表失败", e);
+            return null;
+        }
+        try{
             final List<Movie> movies = JSON.parseArray(builder.toString(), Movie.class);
             if(movies != null) {
                 final CountDownLatch latch = new CountDownLatch(movies.size());
@@ -158,8 +186,10 @@ public class MainActivity extends Activity {
                             @Override
                             public void run() {
                                 try {
-                                    movie.setPhotoDrawable(Drawable.createFromStream(
-                                            new URL("http://" + REMOTE_IP + ":" + REOMTE_PORT + movie.getPhoto()).openStream(), movie.getPhoto()));
+                                    if(movie.getPhoto() != null && !movie.getPhoto().equals("")) {
+                                        movie.setPhotoDrawable(Drawable.createFromStream(
+                                                new URL("http://" + REMOTE_IP + ":" + REOMTE_PORT + movie.getPhoto()).openStream(), movie.getPhoto()));
+                                    }
                                     size.decrementAndGet();
                                     latch.countDown();
                                 } catch (IOException e) {
@@ -180,7 +210,7 @@ public class MainActivity extends Activity {
             }
             System.out.println("total cost: " + (System.currentTimeMillis() - start));
             return movies;
-        } catch (IOException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return null;
